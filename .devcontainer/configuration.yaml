@@ -6,4 +6,5 @@ logger:
 
 sensor:
   platform: instagram
-  account: 99hud
+  username: <username>
+  password: <password>
