@@ -11,7 +11,7 @@ from homeassistant.util.dt import utc_from_timestamp
 
 ICON = "mdi:instagram"
 
-SCAN_INTERVAL = timedelta(seconds=10)
+SCAN_INTERVAL = timedelta(minutes=60)
 
 ATTRIBUTION = "Data provided by instagram api"
 
