@@ -1,10 +1,10 @@
 {
-    "domain": "instagram",
-    "name": "Instagram",
-    "documentation": "https://github.com/hudsonbrendon/sensor.instagram",
-    "dependencies": [],
-    "codeowners": [
-      "@hudsonbrendon"
-    ],
-    "requirements": []
-  }
+  "domain": "instagram",
+  "name": "Instagram",
+  "version": "1.0.2",
+  "documentation": "https://github.com/hudsonbrendon/sensor.instagram",
+  "dependencies": [],
+  "codeowners": ["@hudsonbrendon"],
+  "requirements": ["instaloader==4.8.1"],
+  "iot_class": "cloud_polling"
+}
