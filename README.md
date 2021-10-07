@@ -4,7 +4,7 @@
 
 ![logo.jpg](logo.png)
 
-Custom component to get full name, posts, followers, following from Instagram for Home Assistant
+Custom component to get full name, posts, followers, following, igtv from Instagram for Home Assistant
 
 # Installation
 
@@ -26,7 +26,8 @@ Custom component to get full name, posts, followers, following from Instagram fo
 
 ```yaml
 - platform: instagram
-  account: your-instagram-account
+  username: your-instagram-username
+  password: your-instagram-password
 ```
 
 # Debugging
