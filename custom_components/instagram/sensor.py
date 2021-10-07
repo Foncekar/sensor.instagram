@@ -1,115 +1,94 @@
-"""
-A platform that provides information about your posts, followers, who you follow.
+import time
+from datetime import timedelta
 
-For more details on this component, refer to the documentation at
-https://github.com/hudsonbrendon/sensor.instagram
-"""
-import logging
-
-import async_timeout
 import homeassistant.helpers.config_validation as cv
+import instaloader
 import voluptuous as vol
 from homeassistant.components.sensor import PLATFORM_SCHEMA
-from homeassistant.helpers.aiohttp_client import async_create_clientsession
+from homeassistant.const import STATE_UNKNOWN
 from homeassistant.helpers.entity import Entity
-
-CONF_ACCOUNT = "account"
+from homeassistant.util.dt import utc_from_timestamp
 
 ICON = "mdi:instagram"
 
-BASE_URL = "https://www.instagram.com/{}/?__a=1"
+SCAN_INTERVAL = timedelta(seconds=10)
+
+ATTRIBUTION = "Data provided by instagram api"
+
+DOMAIN = "instagram"
+
+CONF_USERNAME = "username"
+CONF_PASSWORD = "password"
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
     {
-        vol.Required(CONF_ACCOUNT): cv.string,
+        vol.Required(CONF_USERNAME): cv.string,
+        vol.Required(CONF_PASSWORD): cv.string,
     }
 )
 
-_LOGGER = logging.getLogger(__name__)
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Setup the currency sensor"""
 
+    username = config["username"]
+    password = config["password"]
 
-async def async_setup_platform(hass, config, async_add_entities, discovery_info=None):
-    """Setup sensor platform."""
-    account = config["account"]
-    session = async_create_clientsession(hass)
-    try:
-        url = BASE_URL.format(account)
-        async with async_timeout.timeout(10, loop=hass.loop):
-            response = await session.get(url)
-            info = await response.json()
-        name = info["graphql"]["user"]["full_name"]
-    except Exception:
-
-        name = None
-
-    if name is not None:
-        async_add_entities([InstagramSensor(account, name, session)], True)
-
+    add_entities(
+        [InstagramSensor(hass, username, password, SCAN_INTERVAL)],
+        True,
+    )
 
 class InstagramSensor(Entity):
-    """Instagram Sensor class"""
 
-    def __init__(self, account, name, session):
-        self._state = account
-        self.session = session
-        self._name = name
-        self._posts = 0
-        self._followers = 0
-        self._following = 0
-        self.account = account
-
-    async def async_update(self):
-        """Update sensor."""
-        _LOGGER.debug("%s - Running update", self._name)
-        try:
-            url = BASE_URL.format(self.account)
-            async with async_timeout.timeout(10, loop=self.hass.loop):
-                response = await self.session.get(url)
-                info = await response.json()
-            self._posts = info["graphql"]["user"]["edge_owner_to_timeline_media"][
-                "count"
-            ]
-            self._followers = info["graphql"]["user"]["edge_followed_by"]["count"]
-            self._following = info["graphql"]["user"]["edge_follow"]["count"]
-        except Exception as error:
-            _LOGGER.debug("%s - Could not update - %s", self._name, error)
+    def __init__(self, hass, username, password, interval):
+        """Inizialize sensor"""
+        self._hass = hass
+        self._interval = interval
+        self._username = username
+        self._password = password
+        self._instagram = instaloader.Instaloader()
+        self._instagram.login(self._username, self._password)
+        self._last_updated = STATE_UNKNOWN
 
     @property
     def name(self):
-        """Name."""
-        return self._name
-
-    @property
-    def state(self):
-        """State."""
-        return self._state
-
-    @property
-    def posts(self):
-        """Count posts."""
-        return self._posts
-
-    @property
-    def followers(self):
-        """Count followers."""
-        return self._followers
-
-    @property
-    def following(self):
-        """Count following."""
-        return self._following
+        """Return the name sensor"""
+        return self.profile.full_name
 
     @property
     def icon(self):
-        """Icon."""
+        """Return the default icon"""
         return ICON
+
+    @property
+    def state(self):
+        """Return the state of the sensor"""
+        return self.profile.followers
+
+    @property
+    def last_updated(self):
+        """Returns date when it was last updated."""
+        if self._last_updated != 'unknown':
+            stamp = float(self._last_updated)
+            return utc_from_timestamp(int(stamp))
 
     @property
     def device_state_attributes(self):
         """Attributes."""
         return {
-            "name": self.name,
+            "full_name": self.full_name,
             "posts": self.posts,
+            "followees": self.followees,
             "followers": self.followers,
-            "following": self.following,
+            "igtv": self.igtv,
         }
+
+    def update(self):
+        """Get the latest update fron the api"""
+        self.profile = instaloader.Profile.from_username(self._instagram.context, self._username)
+        self.full_name = self.profile.full_name
+        self.followees = self.profile.followees
+        self.followers = self.profile.followers
+        self.posts = self.profile.mediacount
+        self.igtv = self.profile.igtvcount
+        self._last_updated = time.time()
